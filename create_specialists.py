@@ -19,13 +19,16 @@ import os
 from pathlib import Path
 
 from anthropic import Anthropic
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 SPECIALISTS = [
     {
         "key": "pricing",
         "name": "Pricing Specialist",
-        "model": "claude-sonnet-4-6",
+        "model": "claude-sonnet-5",
         "system": (
             "You are the Pricing Specialist in a Deal Desk. Your job is to "
             "recommend commercial terms for inbound RFPs.\n\n"
@@ -44,7 +47,7 @@ SPECIALISTS = [
     {
         "key": "legal",
         "name": "Legal Reviewer",
-        "model": "claude-sonnet-4-6",
+        "model": "claude-sonnet-5",
         "system": (
             "You are the Legal Reviewer in a Deal Desk. Your job is to read "
             "an RFP and flag every clause that conflicts with our standard "
@@ -64,7 +67,7 @@ SPECIALISTS = [
     {
         "key": "technical_fit",
         "name": "Technical Fit Specialist",
-        "model": "claude-sonnet-4-6",
+        "model": "claude-sonnet-5",
         "system": (
             "You are the Technical Fit Specialist. You decide whether our "
             "product actually does what the RFP asks for.\n\n"
@@ -109,12 +112,20 @@ def main() -> None:
         default_headers={"anthropic-beta": "managed-agents-2026-04-01"},
     )
 
+    speed_suffix = (
+        "\n\n# Speed rules (non-negotiable)\n"
+        "- Answer in ONE message. No follow-ups.\n"
+        "- Read ONLY your own skill file. Do not explore the filesystem.\n"
+        "- Do NOT use web search or web fetch.\n"
+        "- 400-600 words. Lead with the answer, not preamble."
+    )
+
     specialist_ids: dict[str, str] = {}
     for spec in SPECIALISTS:
         agent = client.beta.agents.create(
             name=spec["name"],
             model=spec["model"],
-            system=spec["system"],
+            system=spec["system"] + speed_suffix,
             tools=[{"type": "agent_toolset_20260401"}],
             metadata={
                 "hackathon": "partner-basecamp-2026",

@@ -11,6 +11,9 @@ import os
 from pathlib import Path
 
 from anthropic import Anthropic
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 def main() -> None:

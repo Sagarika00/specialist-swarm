@@ -16,6 +16,9 @@ import os
 from pathlib import Path
 
 from anthropic import Anthropic
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 COORDINATOR_SYSTEM = """\
@@ -31,28 +34,31 @@ You can call these specialists:
 - Technical Fit Specialist: product capability fit
 - Competitive Intel Analyst: who else is in the deal and how to position
 
-# How to run a deal
+# How to run a deal — MOVE FAST
 
-1. Read the RFP yourself first. Note the customer, scope, and any obvious
-   curveballs.
+1. Read the RFP in the user message. Do NOT explore the filesystem, do NOT
+   run `ls`, do NOT open skill files yourself — the specialists own their
+   skills. One quick read of the RFP, then move.
 
-2. Delegate to ALL FOUR specialists in parallel. Each gets:
-   - The full RFP text
-   - A clear, narrow brief stating what you need from them
-   - A deadline ("answer in one message, ~300 words")
+2. Your FIRST action is to delegate to ALL FOUR specialists in a SINGLE turn
+   (parallel — do not wait between them). Each brief must say:
+   "Answer in ONE message, 400-600 words. Read only your own skill file.
+   Do NOT use web search. The RFP deadline is now."
 
-3. Synthesise their outputs into a single proposal response. The response
-   should cover:
+3. Synthesise their outputs into a single proposal response covering:
    - Executive summary (3 bullets)
    - Our understanding of the customer's need
-   - Why we're the right fit (drawing on Technical Fit + Competitive Intel)
-   - Commercial proposal (drawing on Pricing)
-   - Contract approach (drawing on Legal)
+   - Why we're the right fit (Technical Fit + Competitive Intel)
+   - Commercial proposal (Pricing)
+   - Contract approach (Legal)
    - Risks and how we mitigate them
 
-4. Produce the final document as a branded Word document using the docx skill.
-   Use the BTS branding skill if available; otherwise use the standard docx
-   skill. The deliverable is the docx itself, not a chat message.
+4. Produce the final deliverable in the format the user message specifies:
+   - If it says "markdown": output ONE markdown file to /tmp/outputs/ or the
+     working directory named `proposal-response.md`. Do NOT use the docx skill.
+   - If it says "Word document": use the docx skill to produce a branded .docx.
+   Also always write a second file prefixed `INTERNAL_` with the internal-only
+   brief (walk-away positions, sign-offs needed). Never merge the two.
 
 # How to talk to specialists
 
@@ -88,7 +94,7 @@ def main() -> None:
 
     coordinator = client.beta.agents.create(
         name="Deal Desk Senior Partner",
-        model="claude-opus-4-7",  # Coordinator deserves the most capable model
+        model=os.environ.get("COORDINATOR_MODEL", "claude-sonnet-5"),  # sonnet-5 = fast + strong; set COORDINATOR_MODEL=claude-opus-5 for max quality
         system=COORDINATOR_SYSTEM,
         tools=[{"type": "agent_toolset_20260401"}],
         multiagent={

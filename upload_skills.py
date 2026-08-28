@@ -16,6 +16,9 @@ from pathlib import Path
 
 from anthropic import Anthropic
 from anthropic.lib import files_from_dir
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 # Map skill directory name → specialist key that should get it

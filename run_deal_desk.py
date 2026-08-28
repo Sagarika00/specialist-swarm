@@ -15,6 +15,9 @@ import os
 from pathlib import Path
 
 from anthropic import Anthropic
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 RFP_PATH = Path("synthetic-data/rfp-acme-corp.md")

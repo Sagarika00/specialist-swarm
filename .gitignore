@@ -1,0 +1,12 @@
+.env
+.environment_id
+.coordinator_id
+.specialist_ids.json
+.skill_ids.json
+.last_session_id
+outputs/
+web/.runs.json
+__pycache__/
+*.pyc
+.venv/
+venv/

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Proposal — RFP Response Studio</title>
+<style>
+  :root{
+    --indigo:#4f46e5;--indigo-d:#4338ca;--canvas:#f4f5fb;--surface:#fff;
+    --ink:#1b1830;--muted:#6b7280;--line:#e6e7ef;--ok:#059669;--warn:#d97706;--danger:#dc2626;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--canvas);color:var(--ink);
+    font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:8px 15px;font-weight:600}
+  .btn{background:var(--indigo);color:#fff}.btn:hover{background:var(--indigo-d)}
+  .btn-ghost{background:var(--surface);border:1px solid var(--line);color:var(--ink)}
+  a{color:var(--indigo)}
+
+  header{background:linear-gradient(100deg,#4f46e5,#7c3aed);color:#fff;padding:14px 26px;
+    display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:5}
+  header h1{font-size:15px;margin:0;font-weight:700}
+  header .sub{font-size:11.5px;opacity:.82}
+  header .spacer{flex:1}
+  header .btn-ghost{background:rgba(255,255,255,.15);border-color:transparent;color:#fff}
+
+  .wrap{max-width:1080px;margin:22px auto;padding:0 20px;display:grid;
+    grid-template-columns:220px 1fr;gap:26px;align-items:start}
+  .toc{position:sticky;top:78px;font-size:12.5px}
+  .toc h4{margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-size:10.5px}
+  .toc a{display:block;padding:4px 0;color:var(--muted)}
+  .toc a:hover{color:var(--indigo)}
+
+  .doc{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    box-shadow:0 8px 30px rgba(20,20,50,.07);padding:44px 52px}
+  .doc h1{font-size:26px;margin:.2em 0 .6em;letter-spacing:-.01em}
+  .doc h2{font-size:19px;margin:1.5em 0 .5em;padding-top:.4em;border-top:1px solid var(--line)}
+  .doc h3{font-size:15px;margin:1.2em 0 .4em}
+  .doc table{border-collapse:collapse;width:100%;margin:1em 0;font-size:14px}
+  .doc th,.doc td{border:1px solid var(--line);padding:8px 10px;text-align:left}
+  .doc th{background:#f7f7fc}
+  .doc code{background:#f2f2f8;padding:1px 5px;border-radius:5px;font-size:13px}
+  .doc pre{background:#1b1830;color:#e8e8f5;padding:14px;border-radius:10px;overflow:auto;font-size:12.5px}
+  .doc blockquote{border-left:3px solid var(--indigo);margin:1em 0;padding:.2em 1em;color:var(--muted)}
+
+  .banner{border-radius:11px;padding:12px 15px;font-size:13px;font-weight:600;margin-bottom:10px;
+    line-height:1.5}
+  .banner b{font-weight:700}
+  .banner.ok{background:#ecfdf5;color:var(--ok)}
+  .banner.warn{background:#fffbeb;color:var(--warn)}
+  .banner.fail{background:#fef2f2;color:var(--danger)}
+  .banner.info{background:#eef2ff;color:var(--indigo)}
+  .filechip{font-size:11px;color:var(--muted);margin-top:14px}
+  @media(max-width:840px){.wrap{grid-template-columns:1fr}.toc{display:none}.doc{padding:26px 22px}}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>RFP Response Studio</h1><div class="sub">Proposal viewer</div></div>
+  <div class="spacer"></div>
+  <button class="btn-ghost" id="scanBtn">Compliance scan</button>
+  <button class="btn-ghost" id="dlBtn">Download</button>
+  <a href="/"><button class="btn">New run</button></a>
+</header>
+
+<div class="wrap">
+  <nav class="toc"><h4>Contents</h4><div id="toc"></div></nav>
+  <article>
+    <div id="banner"></div>
+    <div class="doc" id="doc">Loading proposal…</div>
+    <div class="filechip" id="filechip"></div>
+  </article>
+</div>
+
+<script>
+const SID=location.pathname.split("/").pop();
+const $=id=>document.getElementById(id);
+
+(async()=>{
+  let j;
+  try{ j=await(await fetch(`/api/deliverable/${SID}`)).json(); }
+  catch(e){ $("doc").textContent="Could not load deliverable."; return; }
+  $("doc").innerHTML=j.html||"<p>No deliverable text found.</p>";
+  $("filechip").textContent="source file: "+(j.filename||"—");
+
+  // build TOC + anchors
+  const heads=$("doc").querySelectorAll("h1,h2,h3");
+  const toc=$("toc");
+  heads.forEach((h,i)=>{
+    h.id="s"+i;
+    const a=document.createElement("a");
+    a.href="#s"+i;a.textContent=h.textContent;
+    a.style.paddingLeft=(h.tagName==="H3"?12:h.tagName==="H2"?4:0)+"px";
+    toc.appendChild(a);
+  });
+
+  // internal-file warning
+  const internal=(j.files||[]).filter(f=>f.internal);
+  if(internal.length){
+    $("banner").className="banner info";
+    $("banner").innerHTML=`This view shows the <b>client-facing</b> deliverable.
+      ${internal.length} internal-only file(s) are withheld from sending.`;
+  }
+
+  // auto compliance check
+  try{
+    const s=await(await fetch(`/api/scan/${SID}`)).json();
+    const map={pass:["ok","Compliance scan passed — no sensitive data detected"],
+      review:["info","Compliance scan: low-severity items, quick review advised"],
+      warn:["warn","Compliance scan: medium-severity items found — review before sending"],
+      fail:["fail","Compliance scan FAILED — blocking issues, do not send"]};
+    const [cls,msg]=map[s.verdict];
+    const b=document.createElement("div");
+    b.className="banner "+cls;b.textContent=msg;
+    $("banner").prepend(b);
+  }catch{}
+})();
+
+$("scanBtn").onclick=async()=>{
+  const s=await(await fetch(`/api/scan/${SID}`)).json();
+  alert(`Verdict: ${s.verdict.toUpperCase()}\n`+
+    `critical ${s.counts.critical} · high ${s.counts.high} · medium ${s.counts.medium} · low ${s.counts.low}\n\n`+
+    s.findings.slice(0,12).map(f=>`[${f.severity}] ${f.type} (line ${f.line}): ${f.match}`).join("\n"));
+};
+$("dlBtn").onclick=async()=>{
+  const j=await(await fetch(`/api/files/${SID}`)).json();
+  if(!j.files.length){alert("No downloadable files — copy from the page.");return;}
+  j.files.filter(f=>!f.internal).forEach(f=>window.open(`/api/files/${SID}/${f.id}`,"_blank"));
+};
+</script>
+</body>
+</html>

@@ -20,6 +20,9 @@ import os
 from pathlib import Path
 
 from anthropic import Anthropic
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 CRITIC_SYSTEM = """\
@@ -60,7 +63,7 @@ def main() -> None:
     # Create the critic
     critic = client.beta.agents.create(
         name="Deal Desk Critic",
-        model="claude-opus-4-7",  # The critic needs to be sharp
+        model="claude-opus-5",  # The critic needs to be sharp
         system=CRITIC_SYSTEM,
         tools=[{"type": "agent_toolset_20260401"}],
         metadata={

@@ -14,6 +14,9 @@ import sys
 from pathlib import Path
 
 from anthropic import Anthropic
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 OUTPUT_DIR = Path("outputs")

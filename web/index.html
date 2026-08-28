@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RFP Response Studio</title>
+<style>
+  :root{
+    --indigo:#4f46e5; --indigo-d:#4338ca; --indigo-l:#eef2ff;
+    --canvas:#f4f5fb; --surface:#ffffff; --ink:#1b1830; --muted:#6b7280;
+    --line:#e6e7ef; --ok:#059669; --ok-l:#ecfdf5; --warn:#d97706; --warn-l:#fffbeb;
+    --danger:#dc2626; --danger-l:#fef2f2; --info:#2563eb; --info-l:#eff6ff;
+    --shadow:0 1px 2px rgba(20,20,50,.06),0 8px 24px rgba(20,20,50,.06);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--canvas);color:var(--ink);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  a{color:var(--indigo);text-decoration:none}
+  button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:9px 16px;font-weight:600}
+  .btn-primary{background:var(--indigo);color:#fff}.btn-primary:hover{background:var(--indigo-d)}
+  .btn-primary:disabled{background:#b6b8d4;cursor:not-allowed}
+  .btn-ghost{background:var(--surface);border:1px solid var(--line);color:var(--ink)}
+  .btn-ghost:hover{border-color:var(--indigo);color:var(--indigo)}
+  h2.sec{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0}
+
+  /* header */
+  header{background:linear-gradient(100deg,#4338ca,#6d28d9);color:#fff;padding:20px 28px;
+    display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
+  header .left{display:flex;gap:10px;align-items:center}
+  header .mark{width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.18);
+    display:grid;place-items:center;font-weight:800;font-size:16px}
+  header .title{text-align:center}
+  header .title h1{margin:0;font-size:24px;font-weight:750;letter-spacing:-.02em}
+  header .title p{margin:3px 0 0;font-size:12.5px;opacity:.85;letter-spacing:.02em}
+  header .right{display:flex;gap:8px;justify-content:flex-end}
+  header .btn-ghost{background:rgba(255,255,255,.15);border-color:transparent;color:#fff}
+  header .btn-ghost:hover{background:rgba(255,255,255,.26);color:#fff}
+
+  main{display:grid;grid-template-columns:360px 1fr;gap:18px;padding:18px 22px;
+    max-width:1440px;margin:0 auto;align-items:start}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .card > h2.sec{padding:14px 16px 0}
+  .card .body{padding:14px 16px 16px}
+
+  textarea{width:100%;height:270px;resize:vertical;padding:11px;border:1px solid var(--line);
+    border-radius:10px;font-family:ui-monospace,SFMono-Regular,monospace;font-size:12px;
+    background:#fbfbfe;color:var(--ink)}
+  .drop{margin-top:10px;border:1.5px dashed #c9cbe4;border-radius:10px;padding:14px;text-align:center;
+    font-size:12.5px;color:var(--muted);cursor:pointer;transition:.15s}
+  .drop:hover,.drop.over{border-color:var(--indigo);background:var(--indigo-l);color:var(--indigo)}
+  .out-toggle{display:flex;gap:0;background:#f1f1f6;border-radius:9px;padding:3px;margin:12px 0 6px}
+  .out-toggle button{flex:1;background:transparent;color:var(--muted);border-radius:7px;padding:7px 8px;font-size:12px}
+  .out-toggle button.on{background:var(--surface);color:var(--indigo);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .out-help{font-size:11.5px;color:var(--muted);margin:2px 0 12px}
+  .row{display:flex;gap:8px}.row button{flex:1}
+  .hint{color:var(--muted);font-size:12px;margin-top:9px;min-height:16px}
+
+  /* swarm */
+  .swarm{display:flex;flex-direction:column;align-items:center;padding:20px 16px 8px}
+  .node{width:100%;max-width:560px;border:1px solid var(--line);border-radius:12px;background:var(--surface);
+    padding:12px 14px;transition:.2s}
+  .node .top{display:flex;align-items:center;gap:9px}
+  .node .name{font-weight:650}
+  .node .sub{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .node .verdict{margin-top:9px;font-size:12px;background:#fafafe;border:1px solid var(--line);border-radius:9px;
+    padding:9px 10px;white-space:pre-wrap;max-height:150px;overflow:auto;display:none}
+  .node.open .verdict{display:block}
+  .dot{width:9px;height:9px;border-radius:50%;background:#c7c9da;flex:none}
+  .node[data-s="running"]{border-color:var(--warn);box-shadow:0 0 0 3px var(--warn-l)}
+  .node[data-s="running"] .dot{background:var(--warn);animation:pulse 1s infinite}
+  .node[data-s="done"]{border-color:var(--ok)} .node[data-s="done"] .dot{background:var(--ok)}
+  .node[data-s="error"]{border-color:var(--danger)} .node[data-s="error"] .dot{background:var(--danger)}
+  .coordinator{border-color:var(--indigo);background:var(--indigo-l)}
+  .connector{width:2px;height:20px;background:var(--line)}
+  .specialist-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:560px}
+  .badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;text-transform:uppercase}
+  .badge.wait{background:#f1f1f6;color:var(--muted)}
+  .badge.run{background:var(--warn-l);color:var(--warn)}
+  .badge.done{background:var(--ok-l);color:var(--ok)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  #log{font-family:ui-monospace,monospace;font-size:11px;max-height:200px;overflow:auto}
+  .lg{padding:3px 0;border-bottom:1px solid var(--line);color:var(--muted)}
+  .lg b{color:var(--ink);text-transform:uppercase;font-size:10px;letter-spacing:.04em}
+
+  /* actions */
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin:0 22px 14px;max-width:1440px}
+  .actions.hide-until-run > .after-run{display:none}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;max-width:1440px;margin:0 auto 4px;padding:0 22px}
+
+  /* workspace tabs */
+  .workspace{max-width:1440px;margin:4px auto 44px;padding:0 22px}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+  .tabs button{background:transparent;color:var(--muted);border-radius:9px 9px 0 0;padding:10px 15px;
+    font-size:13px;border:1px solid transparent;border-bottom:0;white-space:nowrap}
+  .tabs button.on{background:var(--surface);color:var(--indigo);border-color:var(--line)}
+  .tabpane{display:none;background:var(--surface);border:1px solid var(--line);border-top:0;
+    border-radius:0 0 14px 14px;box-shadow:var(--shadow);padding:18px 20px}
+  .tabpane.on{display:block}
+  .locked{color:var(--muted);font-size:13px;padding:26px;text-align:center}
+  .runbtn-sm{margin-top:12px}
+
+  /* chat */
+  #chatlog{max-height:52vh;overflow:auto;display:flex;flex-direction:column;gap:12px;padding:10px 2px 12px}
+  .msg{max-width:80%;padding:10px 13px;border-radius:12px;font-size:13.5px;white-space:pre-wrap;line-height:1.55}
+  .msg.user{align-self:flex-end;background:var(--indigo);color:#fff;border-bottom-right-radius:4px}
+  .msg.bot{align-self:flex-start;background:#f4f4fb;border:1px solid var(--line);border-bottom-left-radius:4px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 4px}
+  .chip{background:var(--indigo-l);color:var(--indigo);border:1px solid #dfe3ff;border-radius:999px;
+    padding:6px 12px;font-size:12px;cursor:pointer}.chip:hover{background:#e2e6ff}
+  .chatbar{display:flex;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+  .chatbar input{flex:1;padding:11px 13px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:13.5px}
+
+  /* instant read */
+  .lean{display:inline-block;font-weight:800;font-size:13px;padding:5px 12px;border-radius:999px;letter-spacing:.02em}
+  .lean.BID{background:var(--ok-l);color:var(--ok)}
+  .lean.NOBID{background:var(--danger-l);color:var(--danger)}
+  .lean.COND{background:var(--warn-l);color:var(--warn)}
+  .brief-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
+  .brief-grid .b{background:#fafafe;border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+  .brief-grid .b span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .brief-grid .b b{display:block;font-size:15px;margin-top:3px}
+  .rf{border:1px solid var(--line);border-left:4px solid var(--danger);border-radius:8px;padding:9px 12px;margin-bottom:8px}
+  .rf b{font-size:13px}.rf p{margin:3px 0 0;font-size:12.5px;color:var(--muted)}
+
+  /* scorecard */
+  .gauges{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:8px}
+  .gauge{text-align:center}
+  .gauge .cap{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-top:4px}
+  .gauge .val{font-size:30px;font-weight:800;letter-spacing:-.02em}
+  .headline{background:var(--indigo-l);border:1px solid #dfe3ff;border-radius:10px;padding:11px 13px;
+    font-size:13px;margin:6px 0 16px}
+  .fbar{display:grid;grid-template-columns:150px 1fr 46px;gap:10px;align-items:center;margin-bottom:9px;font-size:12.5px}
+  .fbar .track{background:#f1f1f6;border-radius:6px;height:22px;overflow:hidden}
+  .fbar .track > i{display:block;height:100%;background:linear-gradient(90deg,#818cf8,#4f46e5);border-radius:6px}
+  .fbar .why{grid-column:1/-1;font-size:11.5px;color:var(--muted);margin:-3px 0 4px}
+  .drv{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+  .drv .e{font-weight:800;width:16px;flex:none}
+  .drv .e.plus{color:var(--ok)} .drv .e.minus{color:var(--danger)}
+
+  /* proof points */
+  .pp{border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin-bottom:10px}
+  .pp .h{display:flex;align-items:center;gap:9px;justify-content:space-between}
+  .pp .req{font-weight:650;font-size:13px}
+  .st{font-size:10px;font-weight:800;padding:3px 9px;border-radius:999px;text-transform:uppercase;flex:none}
+  .st.proven{background:var(--ok-l);color:var(--ok)}
+  .st.partial{background:var(--warn-l);color:var(--warn)}
+  .st.gap{background:var(--danger-l);color:var(--danger)}
+  .match{background:#fafafe;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:7px;font-size:12px}
+  .match b{font-size:12px}
+  .refyes{color:var(--ok);font-weight:700;font-size:11px}
+  .refno{color:var(--muted);font-size:11px}
+  .pp-summary{display:flex;gap:10px;margin-bottom:14px}
+  .pp-summary .s{flex:1;text-align:center;border:1px solid var(--line);border-radius:10px;padding:10px}
+  .pp-summary .s b{display:block;font-size:20px}
+
+  /* lifecycle */
+  .stage{display:grid;grid-template-columns:26px 1fr;gap:12px;padding:12px 0;border-bottom:1px dashed var(--line)}
+  .stage .n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;
+    background:#eef2ff;color:var(--indigo)}
+  .stage.have .n{background:var(--ok);color:#fff}
+  .stage.soon .n{background:#f1f1f6;color:var(--muted)}
+  .stage h4{margin:0;font-size:13.5px}
+  .stage p{margin:2px 0 0;font-size:12.5px;color:var(--muted)}
+  .stage .tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;margin-left:8px}
+  .stage.have .tag{background:var(--ok-l);color:var(--ok)}
+  .stage.soon .tag{background:#f1f1f6;color:var(--muted)}
+
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(20,18,45,.45);display:none;align-items:flex-start;
+    justify-content:center;padding:6vh 16px;z-index:50}
+  .overlay.show{display:flex}
+  .modal{background:var(--surface);border-radius:16px;max-width:720px;width:100%;max-height:82vh;overflow:auto;
+    box-shadow:0 24px 60px rgba(0,0,0,.3)}
+  .modal .mh{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;
+    border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface)}
+  .modal .mh h3{margin:0;font-size:15px}
+  .modal .mb{padding:18px 20px}
+  .x{background:transparent;color:var(--muted);padding:4px 8px;font-size:18px}
+  table.usage{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.usage td{padding:7px 6px;border-bottom:1px solid var(--line)}
+  table.usage td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+  .cost-big{font-size:26px;font-weight:750;letter-spacing:-.02em}
+  .verdict-banner{border-radius:11px;padding:14px 16px;font-weight:600;margin-bottom:14px}
+  .verdict-banner.pass{background:var(--ok-l);color:var(--ok)}
+  .verdict-banner.review{background:var(--info-l);color:var(--info)}
+  .verdict-banner.warn{background:var(--warn-l);color:var(--warn)}
+  .verdict-banner.fail{background:var(--danger-l);color:var(--danger)}
+  .finding{border:1px solid var(--line);border-left:4px solid var(--muted);border-radius:8px;padding:9px 11px;
+    margin-bottom:8px;font-size:12.5px}
+  .finding.critical{border-left-color:var(--danger)} .finding.high{border-left-color:var(--warn)}
+  .finding.medium{border-left-color:var(--info)} .finding.low{border-left-color:#9ca3af}
+  .finding .ctx{font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);margin-top:4px;
+    background:#fafafe;padding:5px 7px;border-radius:6px;overflow:auto}
+  .hist-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+  .pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px}
+  .pill.done{background:var(--ok-l);color:var(--ok)} .pill.running{background:var(--warn-l);color:var(--warn)}
+  .pill.error{background:var(--danger-l);color:var(--danger)} .pill.analyzing{background:var(--indigo-l);color:var(--indigo)}
+</style>
+</head>
+<body>
+<header>
+  <div class="left">
+    <div class="mark">R</div>
+  </div>
+  <div class="title">
+    <h1>RFP Response Studio</h1>
+    <p>From inbound RFP to a submission-ready proposal</p>
+  </div>
+  <div class="right">
+    <button class="btn-ghost" id="usageBtn">Usage &amp; cost</button>
+    <button class="btn-ghost" onclick="openHistory()">History</button>
+  </div>
+</header>
+
+<main>
+  <!-- INPUT -->
+  <div class="card">
+    <h2 class="sec">Inbound RFP</h2>
+    <div class="body">
+      <textarea id="doc" placeholder="Paste the RFP text here…"></textarea>
+      <div class="drop" id="drop">
+        <b>Upload a file</b> — PDF, DOCX, TXT or MD &nbsp;·&nbsp; or drag it here
+        <input type="file" id="file" accept=".pdf,.docx,.txt,.md,.markdown,.rtf" hidden />
+      </div>
+
+      <div class="out-toggle" id="mode">
+        <button data-m="fast" class="on">Draft</button>
+        <button data-m="full">Final proposal</button>
+      </div>
+      <div class="out-help" id="outHelp">
+        <b>Draft</b> — markdown, ~5 min. For internal review and iteration.
+      </div>
+
+      <div class="row">
+        <button class="btn-ghost" id="analyzeBtn">Analyze &amp; chat</button>
+        <button class="btn-primary" id="runBtn">Run the deal team</button>
+      </div>
+      <div class="hint" id="hint"></div>
+    </div>
+  </div>
+
+  <!-- SWARM -->
+  <div class="card">
+    <h2 class="sec">Deal team &nbsp;·&nbsp; <span id="phase">idle</span></h2>
+    <div class="swarm">
+      <div class="node coordinator" id="coordinator" data-s="idle">
+        <div class="top"><span class="dot"></span><span class="name">Senior Partner</span>
+          <span class="badge wait" id="coord-badge">idle</span></div>
+        <div class="sub">Orchestrates the specialists and writes the final proposal</div>
+      </div>
+      <div class="connector"></div>
+      <div class="specialist-grid" id="specialists"></div>
+    </div>
+    <div class="body">
+      <h2 class="sec" style="padding:0 0 8px">Event log</h2>
+      <div id="log"></div>
+    </div>
+  </div>
+</main>
+
+<div class="actions hide-until-run" id="actions">
+  <button class="btn-primary after-run" id="viewBtn">View proposal</button>
+  <button class="btn-ghost after-run" id="scanBtn">Compliance scan</button>
+  <button class="btn-ghost after-run" id="dlBtn">Download files</button>
+</div>
+
+<div class="workspace">
+  <div class="tabs">
+    <button data-t="chat" class="on">Ask the RFP</button>
+    <button data-t="brief">Instant read</button>
+    <button data-t="score">Win &amp; approval</button>
+    <button data-t="proof">Proof points</button>
+    <button data-t="life">Deal lifecycle</button>
+  </div>
+
+  <div class="tabpane on" id="tab-chat">
+    <div id="chatLocked" class="locked">
+      Add an RFP (paste or upload), then <b>Analyze &amp; chat</b> to ask questions about it.
+    </div>
+    <div id="chatUI" style="display:none">
+      <div class="chips" id="chips"></div>
+      <div id="chatlog"></div>
+      <div class="chatbar">
+        <input id="chatInput" placeholder="Ask about the RFP, the risks, the pricing…" autocomplete="off" />
+        <button class="btn-primary" id="chatSend">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabpane" id="tab-brief">
+    <div id="briefLocked" class="locked">Add an RFP and <b>Analyze &amp; chat</b> — the instant read is a
+      ~15-second triage before you commit the full deal team.</div>
+    <div id="briefUI" style="display:none">
+      <button class="btn-primary" id="briefBtn">Generate instant read</button>
+      <div id="briefOut" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+  <div class="tabpane" id="tab-score">
+    <div id="scoreLocked" class="locked">Add an RFP and <b>Analyze &amp; chat</b>. Scores are sharper once
+      the deal team has run — the specialist verdicts feed the model.</div>
+    <div id="scoreUI" style="display:none">
+      <button class="btn-primary" id="scoreBtn">Run win &amp; approval assessment</button>
+      <div id="scoreOut" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <div class="tabpane" id="tab-proof">
+    <div id="proofLocked" class="locked">Add an RFP and <b>Analyze &amp; chat</b>. This matches every
+      mandatory requirement against our delivered track record.</div>
+    <div id="proofUI" style="display:none">
+      <button class="btn-primary" id="proofBtn">Build proof-point matrix</button>
+      <div id="proofOut" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <div class="tabpane" id="tab-life">
+    <p style="font-size:13px;color:var(--muted);margin:0 0 14px">Where RFP Response Studio sits in the full
+      pursuit — <span style="color:var(--ok);font-weight:700">green</span> is built today,
+      <span style="color:var(--muted);font-weight:700">grey</span> is the roadmap.</p>
+    <div id="life"></div>
+  </div>
+</div>
+
+<div class="overlay" id="ov">
+  <div class="modal">
+    <div class="mh"><h3 id="ovTitle"></h3><button class="x" onclick="closeOv()">×</button></div>
+    <div class="mb" id="ovBody"></div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmt=n=>n>=1000?(n/1000).toFixed(1)+"k":String(n);
+const esc=s=>(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;");
+let MODE="fast", SID=null, toolCount=0, es=null, usagePoll=null, lastUsage={};
+
+/* mode toggle */
+$("mode").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  MODE=b.dataset.m;[...$("mode").children].forEach(x=>x.classList.toggle("on",x===b));
+  $("outHelp").innerHTML=MODE==="fast"
+    ? "<b>Draft</b> — markdown, ~5 min. For internal review and iteration."
+    : "<b>Final proposal</b> — branded Word document via the docx skill, ~10 min. For the client.";
+});
+
+/* file upload */
+$("drop").onclick=()=>$("file").click();
+$("file").onchange=e=>{if(e.target.files[0])uploadFile(e.target.files[0]);};
+["dragover","dragenter"].forEach(ev=>$("drop").addEventListener(ev,e=>{e.preventDefault();$("drop").classList.add("over");}));
+["dragleave","drop"].forEach(ev=>$("drop").addEventListener(ev,e=>{e.preventDefault();$("drop").classList.remove("over");}));
+$("drop").addEventListener("drop",e=>{if(e.dataTransfer.files[0])uploadFile(e.dataTransfer.files[0]);});
+async function uploadFile(f){
+  $("hint").textContent="Parsing "+f.name+"…";
+  const fd=new FormData();fd.append("file",f);
+  try{
+    const r=await fetch("/api/upload",{method:"POST",body:fd});
+    const j=await r.json();
+    if(!r.ok)throw new Error(j.detail||r.statusText);
+    $("doc").value=j.document;
+    $("hint").textContent=`Loaded ${j.filename} · ${j.chars.toLocaleString()} chars`;
+  }catch(e){$("hint").textContent="Upload failed: "+e.message;}
+}
+
+/* specialists board */
+const SPECS=["Pricing Specialist","Legal Reviewer","Technical Fit Specialist","Competitive Intel Analyst"];
+const nodes={};
+function buildSpecialists(){
+  $("specialists").innerHTML="";
+  SPECS.forEach(name=>{
+    const el=document.createElement("div");
+    el.className="node"; el.dataset.s="idle";
+    el.innerHTML=`<div class="top"><span class="dot"></span><span class="name">${name}</span>
+      <span class="badge wait">waiting</span></div>
+      <div class="sub">verdict appears here</div><div class="verdict"></div>`;
+    el.onclick=()=>el.classList.toggle("open");
+    $("specialists").appendChild(el);nodes[name]=el;
+  });
+}
+buildSpecialists();
+function setNode(name,s,badgeText,verdict){
+  const el=nodes[name]||nodes[SPECS.find(x=>name.includes(x.split(" ")[0]))];if(!el)return;
+  if(s)el.dataset.s=s;
+  const b=el.querySelector(".badge");
+  b.className="badge "+(s==="running"?"run":s==="done"?"done":"wait");
+  b.textContent=badgeText||b.textContent;
+  if(verdict){el.querySelector(".verdict").textContent=verdict;
+    el.querySelector(".sub").textContent="verdict received · click to expand";}
+}
+function log(k,t){const d=document.createElement("div");d.className="lg";
+  d.innerHTML=`<b>${k}</b> &nbsp;${esc(t)}`;$("log").prepend(d);}
+
+function unlock(){
+  [["chatLocked","chatUI"],["briefLocked","briefUI"],["scoreLocked","scoreUI"],["proofLocked","proofUI"]]
+   .forEach(([l,u])=>{$(l).style.display="none";$(u).style.display="block";});
+}
+function resetBoard(){
+  $("log").innerHTML="";toolCount=0;lastUsage={};
+  $("actions").classList.add("hide-until-run");
+  $("phase").textContent="starting…";
+  $("coordinator").dataset.s="running";
+  $("coord-badge").className="badge run";$("coord-badge").textContent="planning";
+  buildSpecialists();
+}
+
+$("analyzeBtn").onclick=async()=>{
+  const d=$("doc").value.trim();
+  if(!d){$("hint").textContent="Add an RFP first — paste it or upload a file.";return;}
+  $("analyzeBtn").disabled=true;$("hint").textContent="registering RFP…";
+  try{
+    const j=await(await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({document:d})})).json();
+    SID=j.session_id;unlock();
+    $("chatlog").innerHTML="";
+    addMsg("bot","I've read the RFP. Ask me anything — scope, risks, deadlines, the commercial asks — or open **Instant read**, **Win & approval**, or **Proof points**.");
+    $("hint").textContent="RFP registered · session "+SID;
+    switchTab("chat");
+  }catch(e){$("hint").textContent="Analyze failed: "+e.message;}
+  $("analyzeBtn").disabled=false;
+};
+
+$("runBtn").onclick=async()=>{
+  const d=$("doc").value.trim();
+  if(!d){$("hint").textContent="Add an RFP first — paste it or upload a file.";return;}
+  $("runBtn").disabled=true;$("hint").textContent="";resetBoard();
+  try{
+    const r=await fetch("/api/run",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({document:d,mode:MODE,session_id:SID})});
+    if(!r.ok)throw new Error((await r.json()).detail||r.statusText);
+    const j=await r.json();SID=j.session_id;unlock();
+    if(!$("chatlog").children.length)
+      addMsg("bot","Deal team is running. Ask me about the RFP now; I'll fold in the specialist verdicts as they land.");
+    $("hint").textContent="Session "+SID+" · "+j.mode+" output";
+    // invalidate cached assessments — verdicts will change them
+    ["score","proof","brief"].forEach(k=>{});
+  }catch(e){$("hint").textContent="Failed to start: "+e.message;$("runBtn").disabled=false;return;}
+
+  $("phase").textContent="running";
+  es=new EventSource(`/api/stream/${SID}`);
+  es.addEventListener("thread_created",e=>{const a=JSON.parse(e.data).agent;
+    setNode(a,"running","working");log("spawn",a);$("phase").textContent="specialists working";});
+  es.addEventListener("thread_running",e=>setNode(JSON.parse(e.data).agent,"running","working"));
+  es.addEventListener("delegate",e=>log("brief →",JSON.parse(e.data).to));
+  es.addEventListener("reply",e=>{const d=JSON.parse(e.data);setNode(d.from,"done","done",d.text);log("verdict ←",d.from);});
+  es.addEventListener("tool",e=>{toolCount++;log("tool",JSON.parse(e.data).name);});
+  es.addEventListener("message",e=>{$("coord-badge").className="badge run";$("coord-badge").textContent="synthesising";
+    $("phase").textContent="writing proposal";log("partner",JSON.parse(e.data).text.slice(0,160));});
+  es.addEventListener("usage",e=>{lastUsage=JSON.parse(e.data);});
+  es.addEventListener("done",e=>{
+    const d=JSON.parse(e.data);
+    $("phase").textContent="complete";$("coordinator").dataset.s="done";
+    $("coord-badge").className="badge done";$("coord-badge").textContent="delivered";
+    Object.values(nodes).forEach(n=>{if(n.dataset.s==="running")setNode(n.querySelector(".name").textContent,"done","done");});
+    lastUsage.api_cost=d.api_cost;lastUsage.api_currency=d.api_currency;
+    $("actions").classList.remove("hide-until-run");
+    es.close();$("runBtn").disabled=false;
+  });
+  es.addEventListener("error",e=>{let m="stream error";try{m=JSON.parse(e.data).message;}catch{}
+    $("phase").textContent="error";$("coordinator").dataset.s="error";log("error",m);es.close();$("runBtn").disabled=false;});
+};
+
+/* ---------- tabs ---------- */
+function switchTab(t){
+  document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));
+  document.querySelectorAll(".tabpane").forEach(p=>p.classList.toggle("on",p.id==="tab-"+t));
+  if(t==="life")renderLife();
+}
+document.querySelector(".tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(b)switchTab(b.dataset.t);});
+
+/* ---------- chat ---------- */
+const CHIPS=["What are the walk-away risks?","Summarize the legal blockers",
+  "What discount should we offer and why?","What would we concede vs refuse?",
+  "Draft 3 clarification questions for the customer","How do we beat the incumbent here?"];
+function renderChips(){$("chips").innerHTML="";CHIPS.forEach(c=>{
+  const el=document.createElement("span");el.className="chip";el.textContent=c;
+  el.onclick=()=>{$("chatInput").value=c;sendChat();};$("chips").appendChild(el);});}
+renderChips();
+function mdInline(s){return esc(s).replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>").replace(/\n/g,"<br>");}
+function addMsg(role,text){const d=document.createElement("div");
+  d.className="msg "+(role==="user"?"user":"bot");d.innerHTML=mdInline(text);
+  $("chatlog").appendChild(d);$("chatlog").scrollTop=$("chatlog").scrollHeight;return d;}
+async function sendChat(){
+  const q=$("chatInput").value.trim();if(!q||!SID)return;
+  $("chatInput").value="";addMsg("user",q);
+  const bot=addMsg("bot","…");let acc="";$("chatSend").disabled=true;
+  try{
+    const res=await fetch(`/api/chat/${SID}`,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({message:q})});
+    const rd=res.body.getReader(),dec=new TextDecoder();
+    for(;;){const {done,value}=await rd.read();if(done)break;
+      acc+=dec.decode(value,{stream:true});bot.innerHTML=mdInline(acc);
+      $("chatlog").scrollTop=$("chatlog").scrollHeight;}
+  }catch(e){bot.innerHTML=mdInline("[error: "+e.message+"]");}
+  $("chatSend").disabled=false;$("chatInput").focus();
+}
+$("chatSend").onclick=sendChat;
+$("chatInput").addEventListener("keydown",e=>{if(e.key==="Enter")sendChat();});
+
+/* ---------- instant read ---------- */
+$("briefBtn").onclick=async()=>{
+  if(!SID)return;$("briefBtn").disabled=true;
+  $("briefOut").innerHTML="<p style='color:var(--muted)'>Triaging the RFP…</p>";
+  try{
+    const j=await(await fetch(`/api/brief/${SID}`,{method:"POST"})).json();
+    const cls=j.bid_lean==="BID"?"BID":j.bid_lean==="NO-BID"?"NOBID":"COND";
+    $("briefOut").innerHTML=`
+      <div><span class="lean ${cls}">${esc(j.bid_lean||"—")}</span></div>
+      <p style="margin:10px 0 0;font-size:13px">${esc(j.rationale)}</p>
+      <div class="brief-grid">
+        <div class="b"><span>Customer</span><b>${esc(j.customer)||"?"}</b></div>
+        <div class="b"><span>Deal size (est.)</span><b>${esc(j.deal_size_estimate)||"?"}</b></div>
+        <div class="b"><span>Response due</span><b>${esc(j.response_due)||"?"}</b></div>
+        <div class="b"><span>Mandatory reqs</span><b>${j.mandatory_requirements??"?"}</b></div>
+      </div>
+      <h4 style="margin:14px 0 8px">Evaluation criteria</h4>
+      <ul style="margin:0;font-size:12.5px">${(j.evaluation_criteria||[]).map(c=>`<li>${esc(c)}</li>`).join("")}</ul>
+      <h4 style="margin:16px 0 8px">Red flags</h4>
+      ${(j.red_flags||[]).map(f=>`<div class="rf"><b>${esc(f.item)}</b><p>${esc(f.why)}</p></div>`).join("")||"<p>None flagged.</p>"}`;
+  }catch(e){$("briefOut").innerHTML="<p style='color:var(--danger)'>Failed: "+e.message+"</p>";}
+  $("briefBtn").disabled=false;
+};
+
+/* ---------- win & approval ---------- */
+function gauge(pct,label,color){
+  const r=52,c=2*Math.PI*r,off=c*(1-pct/100);
+  return `<div class="gauge"><svg width="132" height="132" viewBox="0 0 132 132">
+    <circle cx="66" cy="66" r="${r}" fill="none" stroke="#eef0f7" stroke-width="13"/>
+    <circle cx="66" cy="66" r="${r}" fill="none" stroke="${color}" stroke-width="13"
+      stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"
+      transform="rotate(-90 66 66)"/>
+    <text x="66" y="72" text-anchor="middle" font-size="26" font-weight="800" fill="#1b1830">${pct}%</text>
+  </svg><div class="cap">${label}</div></div>`;
+}
+$("scoreBtn").onclick=async()=>{
+  if(!SID)return;$("scoreBtn").disabled=true;
+  $("scoreOut").innerHTML="<p style='color:var(--muted)'>Scoring the opportunity…</p>";
+  try{
+    const j=await(await fetch(`/api/scorecard/${SID}`,{method:"POST"})).json();
+    if(j.error){$("scoreOut").innerHTML="<p style='color:var(--danger)'>Model error — try again.</p>";$("scoreBtn").disabled=false;return;}
+    const win=j.win_probability??0, appr=j.approval?.probability??0;
+    const winColor=win>=60?"#059669":win>=40?"#d97706":"#dc2626";
+    const apprColor=appr>=60?"#059669":appr>=40?"#d97706":"#dc2626";
+    const maxC=Math.max(...j.breakdown.map(b=>b.contribution),1);
+    let h=`<div class="gauges">${gauge(win,"Win probability",winColor)}${gauge(appr,"Internal approval",apprColor)}
+      <div style="flex:1;min-width:200px">
+        <div class="headline">${esc(j.headline||"")}</div>
+        <div style="font-size:12px;color:var(--muted)">Segment: <b>${esc(j.segment?.name||"—")}</b> ·
+          historical win rate <b>${j.segment?.historical_win_rate??"—"}%</b><br>
+          <span style="font-size:11.5px">${esc(j.segment?.basis||"")}</span></div>
+      </div></div>
+      <h4 style="margin:14px 0 10px">Win-probability factors</h4>`;
+    j.breakdown.forEach(b=>{
+      h+=`<div class="fbar">
+        <div>${esc(b.name)}<br><span style="color:var(--muted);font-size:11px">weight ${Math.round(b.weight*100)}% · score ${b.score}</span></div>
+        <div class="track"><i style="width:${(b.contribution/maxC)*100}%"></i></div>
+        <div style="text-align:right;font-weight:700">${b.contribution}</div>
+        <div class="why">${esc(b.why)}</div></div>`;
+    });
+    h+=`<h4 style="margin:16px 0 8px">What drives internal approval</h4>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 8px">Approvers required:
+        ${(j.approval?.approvers_required||[]).map(a=>`<b>${esc(a)}</b>`).join(", ")||"none beyond deal desk"}</p>`;
+    (j.approval?.drivers||[]).forEach(d=>{
+      h+=`<div class="drv"><span class="e ${d.effect==="+"?"plus":"minus"}">${d.effect}</span>
+        <div><b>${esc(d.item)}</b><br><span style="color:var(--muted)">${esc(d.note)}</span></div></div>`;
+    });
+    h+=`<p style="font-size:11px;color:var(--muted);margin-top:12px">Win probability = Σ(factor score × weight).
+       Weights are set in server.py → FACTOR_WEIGHTS. Scores and approval odds are model estimates from the RFP,
+       our pricing playbook, past wins and delivery track record${j.factors?"":""}.</p>`;
+    $("scoreOut").innerHTML=h;
+  }catch(e){$("scoreOut").innerHTML="<p style='color:var(--danger)'>Failed: "+e.message+"</p>";}
+  $("scoreBtn").disabled=false;
+};
+
+/* ---------- proof points ---------- */
+$("proofBtn").onclick=async()=>{
+  if(!SID)return;$("proofBtn").disabled=true;
+  $("proofOut").innerHTML="<p style='color:var(--muted)'>Matching requirements to our track record…</p>";
+  try{
+    const j=await(await fetch(`/api/proofpoints/${SID}`,{method:"POST"})).json();
+    if(j.error){$("proofOut").innerHTML="<p style='color:var(--danger)'>Model error — try again.</p>";$("proofBtn").disabled=false;return;}
+    const s=j.summary||{};
+    let h=`<div class="pp-summary">
+      <div class="s" style="border-color:#bbf7d0"><b style="color:var(--ok)">${s.proven??0}</b>proven</div>
+      <div class="s" style="border-color:#fde68a"><b style="color:var(--warn)">${s.partial??0}</b>partial</div>
+      <div class="s" style="border-color:#fecaca"><b style="color:var(--danger)">${s.gap??0}</b>gap</div>
+    </div>`;
+    (j.requirements||[]).forEach(r=>{
+      h+=`<div class="pp"><div class="h">
+        <span class="req">${esc(r.requirement)}</span>
+        <span class="st ${r.status}">${esc(r.status)}</span></div>
+        ${r.category?`<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(r.category)}</div>`:""}
+        ${r.note?`<div style="font-size:12px;margin-top:5px">${esc(r.note)}</div>`:""}
+        ${(r.matches||[]).map(m=>`<div class="match">
+           <b>${esc(m.project)}</b> — ${esc(m.client)} (${m.year}) ·
+           ${m.strength==="strong"?'<span class="refyes">strong match</span>':'<span class="refno">moderate match</span>'} ·
+           ${m.reference_available?'<span class="refyes">reference available</span>':'<span class="refno">no external reference</span>'}
+           <br><span style="color:var(--muted)">${esc(m.evidence)}</span></div>`).join("")}
+      </div>`;
+    });
+    $("proofOut").innerHTML=h;
+  }catch(e){$("proofOut").innerHTML="<p style='color:var(--danger)'>Failed: "+e.message+"</p>";}
+  $("proofBtn").disabled=false;
+};
+
+/* ---------- lifecycle ---------- */
+const STAGES=[
+  ["have","Opportunity & qualification","Inbound signal from a prospect; bid manager decides it's worth pursuing.","add the RFP"],
+  ["have","RFP intake & triage","Parse the RFP (paste or upload), pull deadlines, requirements, weights, red flags.","Instant read"],
+  ["have","Bid / no-bid gate","A fast, cheap assessment before committing the full team.","Instant read"],
+  ["have","Win & approval scoring","Quantified win probability and internal-approval odds with a factor breakdown.","Win & approval"],
+  ["have","Proof-point matrix","Every mandatory requirement matched to a delivered engagement + reference.","Proof points"],
+  ["have","Specialist solutioning","Pricing, Legal, Technical Fit and Competitive each own their lane, in parallel.","the deal team"],
+  ["have","Synthesis → proposal draft","Senior Partner merges the verdicts into one client-ready document.","the deal team"],
+  ["have","Compliance gate","Scan the deliverable for secrets, PII and internal-only content before it leaves.","Compliance scan"],
+  ["have","Analyst Q&A","Anyone can interrogate the RFP + the analysis in plain language.","Ask the RFP"],
+  ["have","Audit trail","Every run recorded — output type, cost, outcome, the exact proposal produced.","History"],
+  ["soon","Approval routing","Auto-route to VP Sales / Legal / Finance based on which bands the deal breaches.","roadmap"],
+  ["soon","Capability-matrix export","Fill the customer's own requirement spreadsheet: requirement → coverage → owner.","roadmap"],
+  ["soon","Clarification drafter","Paste the customer's follow-up questions, get grounded draft answers.","roadmap"],
+  ["soon","Orals deck (pptx)","A 5-slide executive deck generated alongside the written proposal.","roadmap"],
+  ["soon","Negotiation support","Concession trading against the playbook during redlining.","roadmap"],
+  ["soon","Win/loss → memory","Log the outcome; the next similar RFP reuses what worked.","roadmap"],
+];
+function renderLife(){
+  if($("life").children.length)return;
+  $("life").innerHTML=STAGES.map((s,i)=>`<div class="stage ${s[0]}">
+    <div class="n">${s[0]==="have"?"✓":i+1}</div>
+    <div><h4>${s[1]}<span class="tag">${s[0]==="have"?"live · "+s[3]:s[3]}</span></h4><p>${s[2]}</p></div></div>`).join("");
+}
+
+/* ---------- modals ---------- */
+function openOv(t){$("ovTitle").textContent=t;$("ovBody").innerHTML="<p>Loading…</p>";$("ov").classList.add("show");}
+function closeOv(){$("ov").classList.remove("show");if(usagePoll){clearInterval(usagePoll);usagePoll=null;}}
+window.closeOv=closeOv;
+$("ov").addEventListener("click",e=>{if(e.target===$("ov"))closeOv();});
+
+$("usageBtn").onclick=async()=>{
+  openOv("Usage & cost");
+  async function paint(){
+    if(!SID){$("ovBody").innerHTML="<p style='color:var(--muted)'>No run yet. Usage appears once you run the deal team.</p>";return;}
+    const j=await(await fetch(`/api/summary/${SID}`)).json();const u=j.usage||{};
+    const rows=[["Status",j.status],["Output type",j.mode],["Wall-clock",(j.elapsed||0)+" s"],
+      ["Active compute",(j.active_seconds?Math.round(j.active_seconds):"–")+" s"],
+      ["Model requests",u.requests||0],["Tool calls",j.tool_calls||0],
+      ["Input tokens",(u.input||0).toLocaleString()],["Output tokens",(u.output||0).toLocaleString()],
+      ["Cache write tokens",(u.cache_write||0).toLocaleString()],["Cache read tokens",(u.cache_read||0).toLocaleString()]];
+    $("ovBody").innerHTML=`<div class="cost-big">$${(j.est_cost||0).toFixed(4)} <span style="font-size:12px;color:var(--muted);font-weight:500">estimated</span></div>
+      ${j.api_cost?`<p style="font-size:12px;color:var(--muted);margin:4px 0 12px">API-reported: ${j.api_cost} ${j.api_currency||"USD"}</p>`:""}
+      <table class="usage">${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("")}</table>
+      <p style="font-size:11px;color:var(--muted);margin-top:12px">Estimate rates ($/M tok): in ${j.rates.input},
+        out ${j.rates.output}, cache-write ${j.rates.cache_write}, cache-read ${j.rates.cache_read}
+        (server.py → RATES).</p>
+      ${(j.specialists||[]).length?`<h4 style="margin:14px 0 8px">Specialist verdicts</h4>`+
+        j.specialists.map(s=>`<details style="margin-bottom:8px"><summary style="cursor:pointer;font-weight:600">${esc(s.name)}</summary>
+        <pre style="white-space:pre-wrap;font-size:11.5px;background:#fafafe;padding:10px;border-radius:8px;margin-top:6px">${esc(s.text)}</pre></details>`).join(""):""}`;
+  }
+  paint();
+  if(usagePoll)clearInterval(usagePoll);
+  usagePoll=setInterval(()=>{if($("ov").classList.contains("show"))paint();else{clearInterval(usagePoll);usagePoll=null;}},2500);
+};
+
+$("viewBtn").onclick=()=>window.open(`/proposal/${SID}`,"_blank");
+$("scanBtn").onclick=async()=>{
+  openOv("Compliance scan");
+  const j=await(await fetch(`/api/scan/${SID}`)).json();
+  const L={pass:"No issues found — safe to send",review:"Low-severity items — quick review",
+    warn:"Medium-severity items found",fail:"Blocking issues — do not send"};
+  let h=`<div class="verdict-banner ${j.verdict}">${L[j.verdict]}</div>
+    <p style="font-size:12px;color:var(--muted)">critical ${j.counts.critical} · high ${j.counts.high} ·
+     medium ${j.counts.medium} · low ${j.counts.low} · scanned ${j.scanned_chars.toLocaleString()} chars</p>`;
+  h+=j.findings.length?j.findings.map(f=>`<div class="finding ${f.severity}">
+    <b>${f.severity.toUpperCase()}</b> · ${esc(f.type)} <span style="color:var(--muted)">(line ${f.line})</span><br>
+    match: <code>${esc(f.match)}</code>${f.context?`<div class="ctx">${esc(f.context)}</div>`:""}</div>`).join(""):"<p>Deliverable is clean.</p>";
+  $("ovBody").innerHTML=h;
+};
+$("dlBtn").onclick=async()=>{
+  openOv("Download files");
+  const j=await(await fetch(`/api/files/${SID}`)).json();
+  $("ovBody").innerHTML=j.files.length?j.files.map(f=>`<div class="finding ${f.internal?"high":"low"}">
+    <a href="/api/files/${SID}/${f.id}"><b>${esc(f.filename)}</b></a>
+    ${f.internal?' <span class="pill running">INTERNAL — do not send</span>':' <span class="pill done">client-facing</span>'}</div>`).join("")
+    :"<p>No files — text-only output, see the proposal viewer.</p>";
+};
+async function openHistory(){
+  openOv("Run history");
+  const j=await(await fetch("/api/history")).json();
+  $("ovBody").innerHTML=j.runs.length?j.runs.map(r=>`<div class="hist-row">
+    <div><b>${esc(r.title)||"Untitled"}</b><br><span style="color:var(--muted);font-size:11px">${r.created||""} · ${r.mode||"—"}</span></div>
+    <div style="text-align:right"><span class="pill ${r.status}">${r.status}</span>
+      ${r.status==="done"?`<br><a href="/proposal/${r.sid}" target="_blank">view</a>`:""}</div></div>`).join("")
+    :"<p>No runs yet.</p>";
+}
+window.openHistory=openHistory;
+</script>
+</body>
+</html>
